@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Cloud Cost Optimizer — Docker Compose
+#
+# Services:
+#   - influxdb:  Time-series database for cost data
+#   - optimizer: Main application (scheduler + all pipeline stages)
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+  # InfluxDB — Time-Series Database
+  influxdb:
+    image: influxdb:2.7
+    container_name: cco-influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword
+      - DOCKER_INFLUXDB_INIT_ORG=cloud-cost-optimizer
+      - DOCKER_INFLUXDB_INIT_BUCKET=cloud-costs
+      - DOCKER_INFLUXDB_INIT_RETENTION=90d
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_TOKEN:-dev-token-change-me}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8086/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Cloud Cost Optimizer Application
+  optimizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cco-optimizer
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_ORG=cloud-cost-optimizer
+      - INFLUX_BUCKET=cloud-costs
+    volumes:
+      - ./rag/data:/app/rag/data # Persist scraped docs
+    restart: unless-stopped
+
+volumes:
+  influxdb_data:
+    driver: local
+  influxdb_config:
+    driver: local
