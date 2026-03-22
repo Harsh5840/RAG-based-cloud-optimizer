@@ -173,123 +173,15 @@ def send_notification(
     recommendation: Recommendation,
     pr_url: str = "",
 ) -> bool:
-    """
-    Send a Slack notification about a cost optimization opportunity.
-
-    Parameters
-    ----------
-    anomaly : Anomaly
-        The detected anomaly.
-    recommendation : Recommendation
-        The Claude-generated recommendation.
-    pr_url : str
-        URL of the created pull request (optional).
-
-    Returns
-    -------
-    bool
-        True if the notification was sent successfully.
-    """
-    webhook_url = settings.SLACK_WEBHOOK_URL
-    if not webhook_url:
-        logger.warning("SLACK_WEBHOOK_URL not configured, skipping notification")
-        return False
-
-    blocks = _build_slack_blocks(anomaly, recommendation, pr_url)
-
-    payload = {
-        "text": (
-            f"💰 Cost Optimization: {anomaly.service} — "
-            f"Save ${recommendation.savings_estimate:.2f}/month"
-        ),
-        "blocks": blocks,
-    }
-
-    try:
-        response = requests.post(
-            webhook_url,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-            timeout=10,
-        )
-        response.raise_for_status()
-        logger.info("Slack notification sent successfully")
-        return True
-    except requests.RequestException as exc:
-        logger.error("Failed to send Slack notification: %s", exc)
-        return False
-
+    """(MOCKED FOR DEMO VERSION)"""
+    logger.info("Mock: Sending Slack notification for %s", anomaly.service)
+    return True
 
 def send_summary_notification(
     anomalies: list[Anomaly],
     total_savings: float,
     pr_count: int,
 ) -> bool:
-    """
-    Send a daily summary notification of all optimizations found.
-
-    Parameters
-    ----------
-    anomalies : list[Anomaly]
-        All anomalies detected in this run.
-    total_savings : float
-        Total estimated monthly savings across all anomalies.
-    pr_count : int
-        Number of PRs created.
-
-    Returns
-    -------
-    bool
-        True if the notification was sent successfully.
-    """
-    webhook_url = settings.SLACK_WEBHOOK_URL
-    if not webhook_url:
-        return False
-
-    blocks = [
-        {
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": "📊 Daily Cost Optimization Summary",
-                "emoji": True,
-            },
-        },
-        {
-            "type": "section",
-            "fields": [
-                {"type": "mrkdwn", "text": f"*Anomalies Detected:*\n{len(anomalies)}"},
-                {"type": "mrkdwn", "text": f"*PRs Created:*\n{pr_count}"},
-                {"type": "mrkdwn", "text": f"*Monthly Savings:*\n${total_savings:.2f}"},
-                {"type": "mrkdwn", "text": f"*Annual Savings:*\n${total_savings * 12:.2f}"},
-            ],
-        },
-    ]
-
-    if anomalies:
-        # Top anomalies by cost
-        top = sorted(anomalies, key=lambda a: a.current_cost, reverse=True)[:5]
-        summary_lines = [
-            f"• {a.service} ({a.issue_type.value}): ${a.current_cost:.2f}/mo"
-            for a in top
-        ]
-        blocks.append(
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Top Anomalies:*\n" + "\n".join(summary_lines),
-                },
-            }
-        )
-
-    payload = {"text": f"📊 Daily Summary: {len(anomalies)} anomalies, ${total_savings:.2f}/mo savings", "blocks": blocks}
-
-    try:
-        response = requests.post(webhook_url, json=payload, timeout=10)
-        response.raise_for_status()
-        logger.info("Summary notification sent")
-        return True
-    except requests.RequestException as exc:
-        logger.error("Failed to send summary notification: %s", exc)
-        return False
+    """(MOCKED FOR DEMO VERSION)"""
+    logger.info("Mock: Sending Slack summary: %d anomalies, $%.2f savings", len(anomalies), total_savings)
+    return True

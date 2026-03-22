@@ -43,49 +43,33 @@ def _ce_client() -> Any:
 
 
 def fetch_aws_costs(days: int = 30) -> list[dict]:
-    """
-    Fetch daily unblended costs from AWS Cost Explorer.
-
-    Groups results by SERVICE and LINKED_ACCOUNT for per-account chargeback
-    visibility.
-
-    Returns a list of dicts:
-        ``[{service, account, date, cost, currency}, ...]``
-    """
-    ce = _ce_client()
+    """Synthetic generator for AWS costs."""
+    import random
     end = datetime.now(timezone.utc).date()
     start = end - timedelta(days=days)
-
-    logger.info("Fetching AWS costs from %s to %s", start, end)
-
-    response = ce.get_cost_and_usage(
-        TimePeriod={"Start": str(start), "End": str(end)},
-        Granularity="DAILY",
-        Metrics=["UnblendedCost", "UsageQuantity"],
-        GroupBy=[
-            {"Type": "DIMENSION", "Key": "SERVICE"},
-            {"Type": "DIMENSION", "Key": "LINKED_ACCOUNT"},
-        ],
-    )
-
-    records: list[dict] = []
-    for result_by_time in response.get("ResultsByTime", []):
-        date_str = result_by_time["TimePeriod"]["Start"]
-        for group in result_by_time.get("Groups", []):
-            keys = group["Keys"]
-            metrics = group["Metrics"]
-            records.append(
-                {
-                    "service": keys[0],
-                    "account": keys[1] if len(keys) > 1 else "unknown",
-                    "date": date_str,
-                    "cost": float(metrics["UnblendedCost"]["Amount"]),
-                    "usage_quantity": float(metrics["UsageQuantity"]["Amount"]),
-                    "currency": metrics["UnblendedCost"]["Unit"],
-                }
-            )
-
-    logger.info("Fetched %d cost records", len(records))
+    logger.info("Generating synthetic AWS costs from %s to %s", start, end)
+    
+    services = ["AmazonEC2", "AmazonRDS", "AmazonS3", "AWSLambda"]
+    accounts = ["123456789012", "987654321098"]
+    records = []
+    
+    for day_offset in range(days):
+        date = end - timedelta(days=day_offset)
+        for service in services:
+            for account in accounts:
+                # Add occasional spike
+                cost = random.uniform(10.0, 50.0)
+                if random.random() < 0.05:
+                    cost += 200.0  # create a spike anomaly
+                    
+                records.append({
+                    "service": service,
+                    "account": account,
+                    "date": str(date),
+                    "cost": round(cost, 2),
+                    "usage_quantity": round(random.uniform(100.0, 10000.0), 2),
+                    "currency": "USD"
+                })
     return records
 
 
@@ -156,45 +140,40 @@ _INSTANCE_COST_MAP: dict[str, float] = {
 
 
 def fetch_ec2_instances() -> list[dict]:
-    """
-    Describe all EC2 instances, fetch CPU utilization, and compute waste score.
-
-    Returns a list of dicts ready for InfluxDB:
-        ``[{instance_id, instance_type, state, region, cpu_util, cost, waste_score}, ...]``
-    """
-    ec2 = _ec2_client()
-    cw = _cloudwatch_client()
-
-    paginator = ec2.get_paginator("describe_instances")
-    instances: list[dict] = []
-
-    for page in paginator.paginate():
-        for reservation in page["Reservations"]:
-            for inst in reservation["Instances"]:
-                instance_id = inst["InstanceId"]
-                instance_type = inst["InstanceType"]
-                state = inst["State"]["Name"]
-                region = settings.AWS_DEFAULT_REGION
-
-                cpu_util = _get_cpu_utilization(cw, instance_id) if state == "running" else 0.0
-
-                estimated_cost = _INSTANCE_COST_MAP.get(instance_type, 100.0)
-                waste = calculate_waste_score(cpu_util, instance_type, state)
-
-                instances.append(
-                    {
-                        "instance_id": instance_id,
-                        "instance_type": instance_type,
-                        "state": state,
-                        "region": region,
-                        "account": inst.get("OwnerId", "unknown"),
-                        "cpu_utilization": round(cpu_util, 2),
-                        "cost": estimated_cost,
-                        "waste_score": waste,
-                    }
-                )
-
-    logger.info("Fetched %d EC2 instances", len(instances))
+    """Synthetic generator for EC2 instances."""
+    import random
+    logger.info("Generating synthetic EC2 instances")
+    
+    instances = []
+    regions = ["us-east-1", "us-west-2", "eu-central-1"]
+    instance_types = list(_INSTANCE_COST_MAP.keys())
+    states = ["running", "stopped"]
+    
+    for i in range(20):
+        state = random.choice(states)
+        itype = random.choice(instance_types)
+        cpu_util = random.uniform(1.0, 95.0) if state == "running" else 0.0
+        
+        # 20% chance to artificially lower cpu_util to generate a waste anomaly
+        if random.random() < 0.2:
+            cpu_util = random.uniform(0.0, 4.0)
+            state = "running"
+            
+        cost = _INSTANCE_COST_MAP.get(itype, 100.0)
+        waste = calculate_waste_score(cpu_util, itype, state)
+        
+        instances.append({
+            "instance_id": f"i-{random.randint(10000000000000000, 99999999999999999):017x}",
+            "instance_type": itype,
+            "state": state,
+            "region": random.choice(regions),
+            "account": "123456789012",
+            "cpu_utilization": round(cpu_util, 2),
+            "cost": cost,
+            "waste_score": waste,
+        })
+        
+    logger.info("Generated %d synthetic EC2 instances", len(instances))
     return instances
 
 

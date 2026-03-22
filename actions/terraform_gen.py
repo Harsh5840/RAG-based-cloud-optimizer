@@ -91,41 +91,23 @@ def _call_claude(anomaly: Anomaly, context: str) -> dict[str, Any]:
     """
     Call Claude API with the anomaly + context prompt.
 
-    Returns the parsed JSON response dict.
+    (MOCKED FOR DEMO VERSION)
     """
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-
-    user_prompt = _USER_PROMPT_TEMPLATE.format(
-        service=anomaly.service,
-        resource_id=anomaly.resource_id or "N/A",
-        issue_type=anomaly.issue_type.value,
-        current_cost=anomaly.current_cost,
-        expected_cost=anomaly.expected_cost,
-        waste_score=anomaly.waste_score,
-        metrics=json.dumps(anomaly.metrics, indent=2),
-        account=anomaly.account or "N/A",
-        region=anomaly.region or settings.AWS_DEFAULT_REGION,
-        context=context,
-    )
-
-    logger.info("Calling Claude API for %s anomaly on %s", anomaly.issue_type.value, anomaly.service)
-
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4096,
-        system=_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
-
-    # Extract text from response
-    response_text = message.content[0].text
-
-    # Parse JSON from response (handle potential markdown code blocks)
-    json_match = re.search(r"\{[\s\S]*\}", response_text)
-    if json_match:
-        return json.loads(json_match.group())
-
-    raise ValueError(f"Could not parse JSON from Claude response: {response_text[:200]}")
+    logger.info("Mocking Claude API call for %s anomaly on %s", anomaly.issue_type.value, anomaly.service)
+    
+    return {
+        "root_cause": "Mocked analysis: The resource is underutilized or overprovisioned based on synthetic metrics.",
+        "actions": [
+            "Review current usage patterns",
+            "Downsize or terminate the resource",
+            "Apply Auto Scaling policies"
+        ],
+        "terraform_code": "resource \"aws_instance\" \"mock\" {\n  # Mocked Terraform code\n  instance_type = \"t3.micro\"\n}",
+        "savings_estimate": round(anomaly.current_cost * 0.4, 2),
+        "risk_level": "low",
+        "rollback_plan": "Revert Terraform state and apply previous configuration.",
+        "confidence": 0.95
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────────

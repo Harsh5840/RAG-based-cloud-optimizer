@@ -90,10 +90,7 @@ def retrieve_context(
     """
     Retrieve relevant optimization context for an anomaly.
 
-    1. Build a natural-language query from the anomaly fields.
-    2. Encode with all-MiniLM-L6-v2.
-    3. Query Pinecone with ``top_k`` and a service metadata filter.
-    4. Concatenate results into a labelled context block.
+    (MOCKED FOR DEMO VERSION)
 
     Parameters
     ----------
@@ -108,51 +105,8 @@ def retrieve_context(
         Formatted context string ready for inclusion in a Claude prompt.
     """
     query_text = build_query(anomaly)
-    query_vector = _encode_query(query_text)
-
-    index = _get_pinecone_index()
-
-    # Filter by service to reduce cross-service noise
-    # Also include "General" docs that apply to all services
-    metadata_filter = {
-        "service": {"$in": [anomaly.service, "General"]},
-    }
-
-    try:
-        results = index.query(
-            vector=query_vector,
-            top_k=top_k,
-            filter=metadata_filter,
-            include_metadata=True,
-        )
-    except Exception as exc:
-        logger.error("Pinecone query failed: %s", exc)
-        return _fallback_context(anomaly)
-
-    if not results.get("matches"):
-        logger.warning("No Pinecone matches for query: %s", query_text)
-        return _fallback_context(anomaly)
-
-    # Format context block
-    context_parts: list[str] = []
-    for i, match in enumerate(results["matches"], 1):
-        meta = match.get("metadata", {})
-        score = match.get("score", 0)
-        source = meta.get("source", "Unknown")
-        text = meta.get("text", "")
-
-        context_parts.append(
-            f"[Source {i}: {source}] (relevance: {score:.2f})\n{text}"
-        )
-
-    context = "\n\n---\n\n".join(context_parts)
-    logger.info(
-        "Retrieved %d context chunks for %s (top score: %.2f)",
-        len(results["matches"]),
-        anomaly.service,
-        results["matches"][0].get("score", 0),
-    )
-    return context
+    logger.info("Mocking RAG context retrieval for query: %s", query_text)
+    return _fallback_context(anomaly)
 
 
 def _fallback_context(anomaly: Anomaly) -> str:
